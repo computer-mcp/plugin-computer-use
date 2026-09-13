@@ -1,0 +1,33 @@
+name: Validate and package
+on:
+  pull_request:
+  push:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: validate-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+      - name: Verify deterministic declaration package
+        run: |
+          python3 -m unittest discover -s Tests -p 'test_*.py'
+          python3 Scripts/build_package.py dist > package-receipt.json
+      - uses: actions/upload-artifact@v7
+        with:
+          name: computer-use-plugin-${{ github.sha }}
+          path: |
+            dist/computer-use.zip
+            package-receipt.json
+          if-no-files-found: error
+          retention-days: 14

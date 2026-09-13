@@ -1,0 +1,4 @@
+interface:
+  display_name: "Observe, Act, Verify"
+  short_description: "Ground GUI actions in observed and verified state"
+  default_prompt: "Use $observe-act-verify to complete an authorized GUI task and verify the result."

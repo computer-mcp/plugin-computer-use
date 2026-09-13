@@ -1,0 +1,22 @@
+id = 'computer-use'
+name = 'Computer Use'
+version = '1.0.0'
+description = 'Native Computer Use MCP registration and observe–act–verify guidance.'
+
+[[dependencies]]
+id = 'computer-use-client'
+commands = ['SkyComputerUseClient']
+applications = [{ bundle_identifier = 'com.openai.sky.CUAService', executable = 'Contents/SharedSupport/SkyComputerUseClient.app/Contents/MacOS/SkyComputerUseClient' }]
+instructions = 'Use the Computer Use client supplied by its vendor. Bind its actual executable in the host plugin settings if it is not on the host search path. Check vendor support, caller identity and system permissions before use.'
+
+[[mcp]]
+id = 'native'
+transport = 'stdio'
+executable = { dependency = 'computer-use-client' }
+args = ['mcp']
+prefix = 'computer-use'
+capabilities = ['tools']
+
+[[skills]]
+id = 'guidance'
+path = 'skills'
