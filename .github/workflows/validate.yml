@@ -21,6 +21,7 @@ jobs:
           python-version: '3.13'
       - name: Verify deterministic declaration package
         run: |
+          python3 Scripts/check-brand.py
           python3 -m unittest discover -s Tests -p 'test_*.py'
           python3 Scripts/build_package.py dist > package-receipt.json
       - uses: actions/upload-artifact@v7

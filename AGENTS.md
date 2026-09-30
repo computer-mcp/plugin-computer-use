@@ -162,3 +162,11 @@ Read `README.md` and `computer-mcp-plugin.toml` before changing this package.
   without explicit authorization.
 - Preserve native AX fallback and never replay an uncertain write through a
   second backend. Real GUI verification requires a disposable, authorized target.
+
+## Brand delivery
+
+The main Computer MCP repository owns ProductIdentity and BRAND. Imported
+`Documentation/Brand/header.svg` travels with the packaged manual;
+`.github/brand/social.png` supplies the repository preview. `brand.lock.json`
+binds both to canonical exports. Run `python3 Scripts/check-brand.py` locally
+and in CI. Update imports with the main repository's `Scripts/brand.py sync`.

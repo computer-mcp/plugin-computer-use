@@ -1,4 +1,9 @@
-# Computer Use Plugin
+![Computer MCP — Computer Use](Documentation/Brand/header.svg)
+
+# Computer MCP — Computer Use
+
+Part of the [Computer MCP](https://computer-mcp.github.io/) family.
+**Let ChatGPT use your local tools.**
 
 A declarative Computer MCP package that connects to the vendor's native
 Computer Use MCP server and supplies observation/action verification guidance.

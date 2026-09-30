@@ -28,6 +28,7 @@ class PackageTests(unittest.TestCase):
                 "Documentation/Architecture/README.md",
                 "Documentation/Architecture/Package.md",
                 "Documentation/Architecture/Documentation.md",
+                "Documentation/Brand/header.svg",
                 "skills/observe-act-verify/SKILL.md",
                 "skills/observe-act-verify/agents/openai.yaml",
             })
