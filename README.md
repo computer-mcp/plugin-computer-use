@@ -63,6 +63,6 @@ architecture; the [contributor guide](CONTRIBUTING.md) covers validation.
 ## License
 
 Computer MCP-owned code and resources use the
-[Computer MCP Source-Visible License 1.0](LICENSE). Source visibility is not an
-open-source license. See [third-party notices](THIRD_PARTY_NOTICES.md) for the
+[Functional Source License 1.1, Apache 2.0 Future License](LICENSE)
+(FSL-1.1-ALv2). See [third-party notices](THIRD_PARTY_NOTICES.md) for the
 external vendor client's separate ownership and terms.
