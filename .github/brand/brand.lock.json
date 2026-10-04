@@ -1,0 +1,18 @@
+{
+  "schema_version": 2,
+  "authority": "https://github.com/computer-mcp/.github",
+  "revision": "9042c987ef8b3482f63e3a037ae0d0d2fdeffb9a7768c03295c9a6a6c5a43ae2",
+  "consumer": "plugin-computer-use",
+  "files": {
+    "Documentation/Brand/header-light.png": "dbb314cd38cd6c3b8380c4cfb0c8a77dd1e8e823e77f0c60d3dfea0cfe49ef2e",
+    "Documentation/Brand/header-dark.png": "77c8aba3ebf38c68d590d5cc282675d8da2490b5eef00aef4f9c50d37ba5bbe1",
+    ".github/brand/social.png": "0cca2a44001469447b8181142a99aa2201e36eb53c5aeb9be8ab0d934f5c40d7"
+  },
+  "entries": {
+    "README.md": [
+      "Computer Use",
+      "Documentation/Brand/header-light.png",
+      "Documentation/Brand/header-dark.png"
+    ]
+  }
+}

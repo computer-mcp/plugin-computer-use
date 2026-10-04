@@ -1,9 +1,12 @@
-![Computer MCP — Computer Use](Documentation/Brand/header.svg)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Documentation/Brand/header-dark.png">
+  <img alt="Computer MCP — Computer Use" src="Documentation/Brand/header-light.png">
+</picture>
 
 # Computer MCP — Computer Use
 
 Part of the [Computer MCP](https://computer-mcp.github.io/) family.
-**Let ChatGPT use your local tools.**
+**Wherever you chat, your computer is there.**
 
 A declarative Computer MCP package that connects to the vendor's native
 Computer Use MCP server and supplies observation/action verification guidance.
