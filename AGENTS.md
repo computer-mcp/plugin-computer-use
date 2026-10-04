@@ -68,6 +68,9 @@ Use this check:
 
 ## Task Route
 
+- Before changing versions, dependencies, packaging or release workflows, read
+  `Documentation/Architecture/VersioningAndRelease.md` and use its existing project check entry points.
+
 - For repository-native documentation placement, read `Documentation/README.md`
   before editing.
 - For current canonical structure, read
@@ -158,8 +161,8 @@ Read `README.md` and `computer-mcp-plugin.toml` before changing this package.
   particular user's paths, targets, credentials or tool catalog snapshot.
 - Validate the package with `Scripts/build-package.sh OUTPUT_DIRECTORY`, then
   inspect it using the host's package validation and installation tests.
-- Keep test evidence in `.agent/`; do not publish repositories or artifacts
-  without explicit authorization.
+- Keep test evidence outside the repository; do not publish repositories or
+  artifacts without explicit authorization.
 - Preserve native AX fallback and never replay an uncertain write through a
   second backend. Real GUI verification requires a disposable, authorized target.
 
