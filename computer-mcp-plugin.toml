@@ -20,3 +20,6 @@ capabilities = ['tools']
 [[skills]]
 id = 'guidance'
 path = 'skills'
+
+[compatibility]
+minimum_host = '1.1.0'

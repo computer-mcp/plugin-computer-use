@@ -43,8 +43,9 @@ output excludes Git metadata, local test evidence and external executables.
 The build requires Python 3.11 or later's standard library; it installs nothing and
 produces deterministic archive bytes from the same inputs.
 
-`.github/workflows/validate.yml` runs the package tests and retains the ZIP and
-SHA-256 receipt on pull requests, pushes and manual runs. This declaration-only
+`.github/workflows/ci.yml` runs the package tests and retains the ZIP and
+SHA-256 receipt on pull requests, `master` pushes and manual runs, and repeats
+the tests and build on Python 3.11. This declaration-only
 job runs independently of macOS and never starts the vendor client. Its workflow
 artifacts are not a public plugin release or proof of GUI compatibility.
 
