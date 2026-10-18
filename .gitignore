@@ -1,0 +1,6 @@
+.DS_Store
+.agent/
+dist/
+*.pyc
+package-receipt.json
+__pycache__/

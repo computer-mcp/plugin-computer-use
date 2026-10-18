@@ -1,0 +1,2 @@
+Third-party component ownership and distribution scope are documented in
+THIRD_PARTY_NOTICES.md, included in this archive.
