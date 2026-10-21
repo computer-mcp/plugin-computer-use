@@ -20,6 +20,9 @@ class PackageTests(unittest.TestCase):
         second, _ = BUILDER.package_bytes(ROOT)
         self.assertEqual(first, second)
         self.assertEqual(manifest["id"], "computer-use")
+        self.assertIs(type(manifest["plugin_api"]), int)
+        self.assertEqual(manifest["plugin_api"], 1)
+        self.assertEqual(manifest["compatibility"]["minimum_host"], "0.1.0")
         with zipfile.ZipFile(io.BytesIO(first)) as archive:
             self.assertEqual(set(archive.namelist()), {
                 "README.md", "computer-mcp-plugin.toml",

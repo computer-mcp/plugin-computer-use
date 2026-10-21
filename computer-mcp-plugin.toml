@@ -1,6 +1,7 @@
 id = 'computer-use'
 name = 'Computer Use'
 version = '0.1.0'
+plugin_api = 1
 description = 'Native Computer Use MCP registration and observe–act–verify guidance.'
 
 [[dependencies]]
