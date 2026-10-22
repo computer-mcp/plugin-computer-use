@@ -31,7 +31,6 @@ class PackageTests(unittest.TestCase):
                 "Documentation/Architecture/README.md",
                 "Documentation/Architecture/Package.md",
                 "Documentation/Architecture/Documentation.md",
-                "Documentation/Architecture/VersioningAndRelease.md",
                 "Documentation/Brand/header-dark.png",
                 "Documentation/Brand/header-light.png",
                 "Documentation/Reference/Release.md",
