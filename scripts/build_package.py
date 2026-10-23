@@ -15,8 +15,9 @@ import zipfile
 def package_bytes(root):
     paths = [root / name for name in (
         "README.md", "CONTRIBUTING.md", "computer-mcp-plugin.toml", "LICENSE",
-        "THIRD_PARTY_NOTICES.md", "ThirdPartyNotices.txt")]
-    pending = [root / "skills", root / "Documentation"]
+        "THIRD_PARTY_NOTICES.md", "ThirdPartyNotices.txt",
+        ".github/assets/logo/logo-light.png", ".github/assets/logo/logo-dark.png")]
+    pending = [root / "skills", root / "docs"]
     entries = 0
     while pending:
         path = pending.pop()

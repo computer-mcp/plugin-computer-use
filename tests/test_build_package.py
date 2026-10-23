@@ -9,7 +9,7 @@ import unittest
 import zipfile
 
 ROOT = Path(__file__).resolve().parent.parent
-SPEC = importlib.util.spec_from_file_location("build_package", ROOT / "Scripts/build_package.py")
+SPEC = importlib.util.spec_from_file_location("build_package", ROOT / "scripts/build_package.py")
 BUILDER = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(BUILDER)
 
@@ -26,18 +26,20 @@ class PackageTests(unittest.TestCase):
         with zipfile.ZipFile(io.BytesIO(first)) as archive:
             self.assertEqual(set(archive.namelist()), {
                 "README.md", "computer-mcp-plugin.toml",
+                ".github/assets/logo/logo-light.png",
+                ".github/assets/logo/logo-dark.png",
                 "LICENSE", "THIRD_PARTY_NOTICES.md", "ThirdPartyNotices.txt",
-                "CONTRIBUTING.md", "Documentation/README.md",
-                "Documentation/Architecture/README.md",
-                "Documentation/Architecture/Package.md",
-                "Documentation/Architecture/Documentation.md",
-                "Documentation/Brand/header-dark.png",
-                "Documentation/Brand/header-light.png",
-                "Documentation/Reference/Release.md",
+                "CONTRIBUTING.md", "docs/README.md",
+                "docs/Architecture/README.md",
+                "docs/Architecture/Package.md",
+                "docs/Architecture/Documentation.md",
+                "docs/Reference/Release.md",
                 "skills/observe-act-verify/SKILL.md",
                 "skills/observe-act-verify/agents/openai.yaml",
             })
-            for name in ("LICENSE", "THIRD_PARTY_NOTICES.md", "ThirdPartyNotices.txt"):
+            for name in ("LICENSE", "THIRD_PARTY_NOTICES.md", "ThirdPartyNotices.txt",
+                         ".github/assets/logo/logo-light.png",
+                         ".github/assets/logo/logo-dark.png"):
                 self.assertEqual(archive.read(name), (ROOT / name).read_bytes())
             for item in archive.infolist():
                 self.assertEqual(item.date_time, (1980, 1, 1, 0, 0, 0))
@@ -51,8 +53,9 @@ class PackageTests(unittest.TestCase):
                 for name in ("README.md", "CONTRIBUTING.md", "computer-mcp-plugin.toml",
                              "LICENSE", "THIRD_PARTY_NOTICES.md", "ThirdPartyNotices.txt"):
                     shutil.copyfile(ROOT / name, root / name)
+                shutil.copytree(ROOT / ".github/assets/logo", root / ".github/assets/logo")
                 shutil.copytree(ROOT / "skills", root / "skills")
-                shutil.copytree(ROOT / "Documentation", root / "Documentation")
+                shutil.copytree(ROOT / "docs", root / "docs")
                 target = root / "skills" / "unsafe"
                 if kind == "file-link":
                     target.symlink_to(root / "README.md")
@@ -60,7 +63,7 @@ class PackageTests(unittest.TestCase):
                     (root / "skills").rename(root / "guidance")
                     (root / "skills").symlink_to(root / "guidance", target_is_directory=True)
                 elif kind == "documentation-link":
-                    (root / "Documentation" / "unsafe").symlink_to(root / "README.md")
+                    (root / "docs" / "unsafe").symlink_to(root / "README.md")
                 elif kind == "oversize":
                     target.write_bytes(b"x" * 1_048_577)
                 else:
@@ -74,15 +77,17 @@ class PackageTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp) / "source"
             shutil.copytree(ROOT, root, ignore=shutil.ignore_patterns(".git", "__pycache__"))
-            (root / "Documentation" / ".DS_Store").write_bytes(b"finder")
+            (root / "docs" / ".DS_Store").write_bytes(b"finder")
             (root / "skills" / "__pycache__").mkdir()
             (root / "skills" / "__pycache__" / "cached.pyc").write_bytes(b"cache")
             (root / "skills" / "stale.pyc").write_bytes(b"cache")
             actual, _ = BUILDER.package_bytes(root)
         self.assertEqual(actual, expected)
 
-    def test_requires_license_and_notices(self):
-        for name in ("LICENSE", "THIRD_PARTY_NOTICES.md", "ThirdPartyNotices.txt"):
+    def test_requires_license_notices_and_logos(self):
+        for name in ("LICENSE", "THIRD_PARTY_NOTICES.md", "ThirdPartyNotices.txt",
+                         ".github/assets/logo/logo-light.png",
+                         ".github/assets/logo/logo-dark.png"):
             with self.subTest(name=name), tempfile.TemporaryDirectory() as temp:
                 root = Path(temp) / "source"
                 shutil.copytree(ROOT, root, ignore=shutil.ignore_patterns(".git", "__pycache__"))
@@ -92,7 +97,7 @@ class PackageTests(unittest.TestCase):
 
     def test_command_is_idempotent_but_never_overwrites_different_output(self):
         with tempfile.TemporaryDirectory() as temp:
-            command = [sys.executable, str(ROOT / "Scripts/build_package.py"), temp]
+            command = [sys.executable, str(ROOT / "scripts/build_package.py"), temp]
             first = subprocess.run(command, capture_output=True, timeout=10)
             second = subprocess.run(command, capture_output=True, timeout=10)
             self.assertEqual(first.returncode, 0, first.stderr)

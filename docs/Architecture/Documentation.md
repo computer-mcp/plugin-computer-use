@@ -1,10 +1,10 @@
 # Documentation structure
 
-The root README is the public setup and usage manual. Documentation/README.md
+The root README is the public setup and usage manual. docs/README.md
 indexes the architecture and reference material. AGENTS.md routes agent work;
 CONTRIBUTING.md describes contributor checks. Current package facts belong in
-Documentation/Architecture/Package.md; commands, formats and operating detail
-belong in Documentation/Reference/.
+docs/Architecture/Package.md; commands, formats and operating detail
+belong in docs/Reference/.
 
 Version rules belong in the
 [organization VERSIONING](https://github.com/computer-mcp/.github/blob/master/VERSIONING.md).
