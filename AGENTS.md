@@ -167,13 +167,3 @@ Read `README.md` and `computer-mcp-plugin.toml` before changing this package.
   artifacts without explicit authorization.
 - Preserve native AX fallback and never replay an uncertain write through a
   second backend. Real GUI verification requires a disposable, authorized target.
-
-## Brand delivery
-
-The organization `.github` repository owns the design system and renders every
-image; the main Computer MCP repository owns ProductIdentity. Imported
-`Documentation/Brand/header-light.png` and `header-dark.png` travel with the
-packaged manual; `.github/brand/social.png` supplies the repository preview.
-`.github/brand/brand.lock.json` binds them to the organization exports, and CI
-verifies it with the shared brand-check workflow. Update imports with the
-organization repository's `python3 Brand/brand.py sync`.

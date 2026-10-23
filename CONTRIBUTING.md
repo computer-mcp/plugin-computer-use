@@ -6,7 +6,7 @@ external dependencies and credentials.
 
 ## Validation
 
-CI runs `python3 -m unittest discover -s Tests -p 'test_*.py'` and `python3 Scripts/build_package.py OUTPUT_DIRECTORY` on Python 3.13 and 3.11, and the organization brand check; run the first two before opening a pull request. Build an archive with `Scripts/build-package.sh OUTPUT_DIRECTORY` and inspect its file list. GUI checks use disposable, explicitly authorized targets.
+CI runs `python3 -m unittest discover -s Tests -p 'test_*.py'` and `python3 Scripts/build_package.py OUTPUT_DIRECTORY` on Python 3.13 and 3.11; run both before opening a pull request. Build an archive with `Scripts/build-package.sh OUTPUT_DIRECTORY` and inspect its file list. GUI checks use disposable, explicitly authorized targets.
 
 ## Documentation
 
