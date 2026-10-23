@@ -20,7 +20,7 @@ jobs:
     with:
       ref: ${{ inputs.ref }}
       publish: ${{ inputs.publish }}
-      build: Scripts/build-package.sh
+      build: scripts/build-package.sh
       ci_artifact: computer-use-plugin-${commit}
   notify-catalog:
     needs: release

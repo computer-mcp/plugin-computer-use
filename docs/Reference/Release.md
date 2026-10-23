@@ -20,7 +20,7 @@ describes workflow verification and recovery.
 | Manifest and host runtime contract | Plugin API version | `plugin_api` in [`computer-mcp-plugin.toml`](../../computer-mcp-plugin.toml) | release receipt and host compatibility evaluation | Package tests check the declaration; `release.yml` verifies it |
 
 The archive contains the README, contribution guide, manifest, license, notices,
-`skills/` and `Documentation/`. Tests, build scripts and workflows are excluded
+`skills/` and `docs/`. Tests, build scripts and workflows are excluded
 from the archive.
 
 ## Compatibility Surface
@@ -47,9 +47,9 @@ acceptance identify the combination actually observed.
 
 ## Derived Metadata and Drift Checks
 
-`Scripts/build_package.py` verifies the plugin ID, skips hidden files and Python
+`scripts/build_package.py` verifies the plugin ID, skips hidden files and Python
 caches, rejects links and special files, and produces the same archive bytes
-from the same source. `Tests/test_build_package.py` checks the plugin API
+from the same source. `tests/test_build_package.py` checks the plugin API
 declaration and pins the exact archive file set. The builder receipt prints the
 ID, version and SHA-256.
 
@@ -65,12 +65,12 @@ The shared workflow checks that setting before writing a Release.
    `ci.yml`, including its `computer-use-plugin-<commit>` artifact.
 2. Dispatch `release.yml` with `ref` set to that full commit SHA and `publish`
    set to `false` (the default). The workflow rebuilds with
-   `Scripts/build-package.sh` and compares the archive bytes with the exact CI
+   `scripts/build-package.sh` and compares the archive bytes with the exact CI
    artifact. Inspect the `plugin-release-<run-id>-<attempt>` Actions artifact:
    `assets/` contains `computer-use.zip`, `release-receipt.json` and `SHA256SUMS`.
    An untagged dry run reports the signed annotated tag still required for
    publication.
-3. Rebuild the same commit with `Scripts/build-package.sh <output-directory>`
+3. Rebuild the same commit with `scripts/build-package.sh <output-directory>`
    and confirm it matches the dry-run archive. Validate and install that exact
    archive with the selected Computer MCP host, and confirm native catalog
    discovery with the installed vendor client. GUI checks use a disposable,
@@ -141,8 +141,8 @@ acceptance record.
 
 | Operation | Existing command or explicit manual procedure | Required access |
 | --- | --- | --- |
-| Version update and check | Edit `computer-mcp-plugin.toml`; `python3 -m unittest discover -s Tests -p 'test_*.py'` | Local checkout |
-| Candidate validation and build | `ci.yml`; locally `Scripts/build-package.sh <output-directory>` | CI or local checkout |
+| Version update and check | Edit `computer-mcp-plugin.toml`; `python3 -m unittest discover -s tests -p 'test_*.py'` | Local checkout |
+| Candidate validation and build | `ci.yml`; locally `scripts/build-package.sh <output-directory>` | CI or local checkout |
 | Native and host acceptance | Validate and install the exact archive with the selected host; verify native catalog discovery and authorized GUI behavior | Selected host, vendor client and authorized disposable target |
 | Acceptance and publication | Manual checks above; dispatch `release.yml`, dry run first | Repository Actions; publication also needs a signing key and release write access |
 | Status and interrupted-run recovery | Inspect CI or `release.yml`; follow [Retry](#retry) | Repository Actions |

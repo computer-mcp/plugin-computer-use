@@ -9,7 +9,7 @@ import unittest
 import zipfile
 
 ROOT = Path(__file__).resolve().parent.parent
-SPEC = importlib.util.spec_from_file_location("build_package", ROOT / "Scripts/build_package.py")
+SPEC = importlib.util.spec_from_file_location("build_package", ROOT / "scripts/build_package.py")
 BUILDER = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(BUILDER)
 
@@ -27,11 +27,11 @@ class PackageTests(unittest.TestCase):
             self.assertEqual(set(archive.namelist()), {
                 "README.md", "computer-mcp-plugin.toml",
                 "LICENSE", "THIRD_PARTY_NOTICES.md", "ThirdPartyNotices.txt",
-                "CONTRIBUTING.md", "Documentation/README.md",
-                "Documentation/Architecture/README.md",
-                "Documentation/Architecture/Package.md",
-                "Documentation/Architecture/Documentation.md",
-                "Documentation/Reference/Release.md",
+                "CONTRIBUTING.md", "docs/README.md",
+                "docs/Architecture/README.md",
+                "docs/Architecture/Package.md",
+                "docs/Architecture/Documentation.md",
+                "docs/Reference/Release.md",
                 "skills/observe-act-verify/SKILL.md",
                 "skills/observe-act-verify/agents/openai.yaml",
             })
@@ -50,7 +50,7 @@ class PackageTests(unittest.TestCase):
                              "LICENSE", "THIRD_PARTY_NOTICES.md", "ThirdPartyNotices.txt"):
                     shutil.copyfile(ROOT / name, root / name)
                 shutil.copytree(ROOT / "skills", root / "skills")
-                shutil.copytree(ROOT / "Documentation", root / "Documentation")
+                shutil.copytree(ROOT / "docs", root / "docs")
                 target = root / "skills" / "unsafe"
                 if kind == "file-link":
                     target.symlink_to(root / "README.md")
@@ -58,7 +58,7 @@ class PackageTests(unittest.TestCase):
                     (root / "skills").rename(root / "guidance")
                     (root / "skills").symlink_to(root / "guidance", target_is_directory=True)
                 elif kind == "documentation-link":
-                    (root / "Documentation" / "unsafe").symlink_to(root / "README.md")
+                    (root / "docs" / "unsafe").symlink_to(root / "README.md")
                 elif kind == "oversize":
                     target.write_bytes(b"x" * 1_048_577)
                 else:
@@ -72,7 +72,7 @@ class PackageTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp) / "source"
             shutil.copytree(ROOT, root, ignore=shutil.ignore_patterns(".git", "__pycache__"))
-            (root / "Documentation" / ".DS_Store").write_bytes(b"finder")
+            (root / "docs" / ".DS_Store").write_bytes(b"finder")
             (root / "skills" / "__pycache__").mkdir()
             (root / "skills" / "__pycache__" / "cached.pyc").write_bytes(b"cache")
             (root / "skills" / "stale.pyc").write_bytes(b"cache")
@@ -90,7 +90,7 @@ class PackageTests(unittest.TestCase):
 
     def test_command_is_idempotent_but_never_overwrites_different_output(self):
         with tempfile.TemporaryDirectory() as temp:
-            command = [sys.executable, str(ROOT / "Scripts/build_package.py"), temp]
+            command = [sys.executable, str(ROOT / "scripts/build_package.py"), temp]
             first = subprocess.run(command, capture_output=True, timeout=10)
             second = subprocess.run(command, capture_output=True, timeout=10)
             self.assertEqual(first.returncode, 0, first.stderr)
