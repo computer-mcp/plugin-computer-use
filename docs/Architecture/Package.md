@@ -17,8 +17,9 @@ directory. Discovery does not establish signing identity or GUI caller trust.
 
 The package builder validates regular files and bounded input, rejects links and
 special files, and emits deterministic ZIP bytes. The shipped contents are the
-manifest, manuals, license and notices, architecture documentation and skill tree. Agent execution
-state and source-level test helpers stay with the checkout.
+manifest, manuals, license and notices, architecture documentation, skill tree
+and the README logo images in `.github/assets/logo/`. Agent execution state
+and source-level test helpers stay with the checkout.
 
 The MCP connection goes directly to the vendor. Native AX remains a diagnostic
 and fallback facility; uncertain actions require observation before another

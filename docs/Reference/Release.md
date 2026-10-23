@@ -20,8 +20,9 @@ describes workflow verification and recovery.
 | Manifest and host runtime contract | Plugin API version | `plugin_api` in [`computer-mcp-plugin.toml`](../../computer-mcp-plugin.toml) | release receipt and host compatibility evaluation | Package tests check the declaration; `release.yml` verifies it |
 
 The archive contains the README, contribution guide, manifest, license, notices,
-`skills/` and `docs/`. Tests, build scripts and workflows are excluded
-from the archive.
+`skills/`, `docs/` and the README images `.github/assets/logo/logo-light.png`
+and `.github/assets/logo/logo-dark.png`. Tests, build scripts and workflows
+are excluded from the archive.
 
 ## Compatibility Surface
 
@@ -47,9 +48,10 @@ acceptance identify the combination actually observed.
 
 ## Derived Metadata and Drift Checks
 
-`scripts/build_package.py` verifies the plugin ID, skips hidden files and Python
-caches, rejects links and special files, and produces the same archive bytes
-from the same source. `tests/test_build_package.py` checks the plugin API
+`scripts/build_package.py` verifies the plugin ID, explicitly includes the README
+logo images, skips hidden files and Python caches when traversing content trees,
+rejects links and special files, and produces the same archive bytes from the
+same source. `tests/test_build_package.py` checks the plugin API
 declaration and pins the exact archive file set. The builder receipt prints the
 ID, version and SHA-256.
 

@@ -26,6 +26,8 @@ class PackageTests(unittest.TestCase):
         with zipfile.ZipFile(io.BytesIO(first)) as archive:
             self.assertEqual(set(archive.namelist()), {
                 "README.md", "computer-mcp-plugin.toml",
+                ".github/assets/logo/logo-light.png",
+                ".github/assets/logo/logo-dark.png",
                 "LICENSE", "THIRD_PARTY_NOTICES.md", "ThirdPartyNotices.txt",
                 "CONTRIBUTING.md", "docs/README.md",
                 "docs/Architecture/README.md",
@@ -35,7 +37,9 @@ class PackageTests(unittest.TestCase):
                 "skills/observe-act-verify/SKILL.md",
                 "skills/observe-act-verify/agents/openai.yaml",
             })
-            for name in ("LICENSE", "THIRD_PARTY_NOTICES.md", "ThirdPartyNotices.txt"):
+            for name in ("LICENSE", "THIRD_PARTY_NOTICES.md", "ThirdPartyNotices.txt",
+                         ".github/assets/logo/logo-light.png",
+                         ".github/assets/logo/logo-dark.png"):
                 self.assertEqual(archive.read(name), (ROOT / name).read_bytes())
             for item in archive.infolist():
                 self.assertEqual(item.date_time, (1980, 1, 1, 0, 0, 0))
@@ -49,6 +53,7 @@ class PackageTests(unittest.TestCase):
                 for name in ("README.md", "CONTRIBUTING.md", "computer-mcp-plugin.toml",
                              "LICENSE", "THIRD_PARTY_NOTICES.md", "ThirdPartyNotices.txt"):
                     shutil.copyfile(ROOT / name, root / name)
+                shutil.copytree(ROOT / ".github/assets/logo", root / ".github/assets/logo")
                 shutil.copytree(ROOT / "skills", root / "skills")
                 shutil.copytree(ROOT / "docs", root / "docs")
                 target = root / "skills" / "unsafe"
@@ -79,8 +84,10 @@ class PackageTests(unittest.TestCase):
             actual, _ = BUILDER.package_bytes(root)
         self.assertEqual(actual, expected)
 
-    def test_requires_license_and_notices(self):
-        for name in ("LICENSE", "THIRD_PARTY_NOTICES.md", "ThirdPartyNotices.txt"):
+    def test_requires_license_notices_and_logos(self):
+        for name in ("LICENSE", "THIRD_PARTY_NOTICES.md", "ThirdPartyNotices.txt",
+                         ".github/assets/logo/logo-light.png",
+                         ".github/assets/logo/logo-dark.png"):
             with self.subTest(name=name), tempfile.TemporaryDirectory() as temp:
                 root = Path(temp) / "source"
                 shutil.copytree(ROOT, root, ignore=shutil.ignore_patterns(".git", "__pycache__"))
