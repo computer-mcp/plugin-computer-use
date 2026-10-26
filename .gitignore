@@ -1,6 +1,9 @@
 .DS_Store
-.agent/
 dist/
 *.pyc
 package-receipt.json
 __pycache__/
+/.agent/*
+!/.agent/instructions/
+!/.agent/agents.json
+!/.agent/agents.resolved
