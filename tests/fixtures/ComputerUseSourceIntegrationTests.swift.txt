@@ -3,7 +3,6 @@ import ComputerMCPPermissions
 import ComputerMCPSandbox
 import ComputerMCPTestSupport
 import CryptoKit
-import Darwin
 import Foundation
 import Testing
 
@@ -337,6 +336,10 @@ private enum CUAVariant {
 
 private func cuaDigest(_ url: URL) throws -> String {
   SHA256.hash(data: try Data(contentsOf: url)).map { String(format: "%02x", $0) }.joined()
+}
+
+private func cuaCanonicalPath(_ url: URL) -> String {
+  url.resolvingSymlinksInPath().standardizedFileURL.path
 }
 
 private func cuaSuccess(_ result: JSONValue) throws {
@@ -744,17 +747,28 @@ private final class CUAHarness: @unchecked Sendable {
     try await discover(projectID: sibling.id)
     let siblingProcess = try await invokeInWorktree(sibling)
     try #require(callCount == 2)
-    let targetMembers = try await targetProcess.members()
-    let siblingMembers = try await siblingProcess.members()
-    try #require(!targetMembers.isEmpty && !siblingMembers.isEmpty)
-    try #require(Set(targetMembers).isDisjoint(with: siblingMembers))
+    let targetRoot = try targetProcess.recoveryState().root
+    let siblingRoot = try siblingProcess.recoveryState().root
+    let targetBefore = Set(try await targetProcess.members())
+    let siblingBefore = Set(try await siblingProcess.members())
+    try #require(targetBefore.contains(targetRoot))
+    try #require(siblingBefore.contains(siblingRoot))
+    try #require(targetBefore.isDisjoint(with: siblingBefore))
 
     let receipt = try await target.remove(using: lifecycle, session: base.session)
+    let targetAfter = try await targetProcess.members()
+    let siblingAfter = Set(try await siblingProcess.members())
     try #require(receipt["oid"] == .string(oid))
-    try #require(try await targetProcess.members().isEmpty)
-    try #require(try Set(await siblingProcess.members()) == Set(siblingMembers))
+    try #require(targetAfter.isEmpty)
+    try #require(siblingAfter == siblingBefore)
     try #require(try base.database.project(id: target.id) == nil)
-    try #require(try base.database.project(id: sibling.id)?.rootPath == sibling.path.path)
+    let survivingProject = try #require(base.database.project(id: sibling.id))
+    let registeredRoot = URL(fileURLWithPath: survivingProject.rootPath, isDirectory: true)
+    let actualRoot = cuaCanonicalPath(registeredRoot)
+    let expectedRoot = cuaCanonicalPath(sibling.path)
+    try #require(actualRoot == expectedRoot)
+    let rootValues = try registeredRoot.resourceValues(forKeys: [.isDirectoryKey])
+    try #require(rootValues.isDirectory == true)
     for root in [base.project, sibling.path] {
       try #require(
         try String(contentsOf: root.appendingPathComponent("value.txt"), encoding: .utf8)
@@ -771,7 +785,7 @@ private final class CUAHarness: @unchecked Sendable {
     let cwd = try #require(peer["cwd"]?.stringValue)
     let pid = try #require(peer["pid"]?.intValue)
     try #require(peer["tool"] == .string("fixture_unknown"))
-    try #require(URL(fileURLWithPath: cwd).resolvingSymlinksInPath().path == worktree.path.path)
+    try #require(cuaCanonicalPath(URL(fileURLWithPath: cwd)) == cuaCanonicalPath(worktree.path))
     for ownership in base.observations.ownerships.dropFirst(before) {
       let state = try ownership.recoveryState()
       guard state.root.processID == pid else { continue }
@@ -788,14 +802,11 @@ private final class CUAHarness: @unchecked Sendable {
       contentsOf: home.appendingPathComponent("cua-peer-discovery.log"), encoding: .utf8
     ).split(separator: "\n")
     try #require(!rows.isEmpty)
-    func canonicalPath(_ url: URL) -> String {
-      url.resolvingSymlinksInPath().standardizedFileURL.path
-    }
-    let executionRoot = canonicalPath(base.database.permissionExecutionRoot)
-    let packageRoot = canonicalPath(package.root)
-    let projectRoot = canonicalPath(base.project)
+    let executionRoot = cuaCanonicalPath(base.database.permissionExecutionRoot)
+    let packageRoot = cuaCanonicalPath(package.root)
+    let projectRoot = cuaCanonicalPath(base.project)
     for row in rows {
-      let observed = canonicalPath(URL(fileURLWithPath: String(row)))
+      let observed = cuaCanonicalPath(URL(fileURLWithPath: String(row)))
       try #require(observed != packageRoot && observed != projectRoot)
       try #require(observed.hasPrefix(executionRoot + "/"))
     }
@@ -850,7 +861,8 @@ private final class CUAHarness: @unchecked Sendable {
 
   func requireJoined() async throws {
     for ownership in base.observations.ownerships {
-      try #require(try await ownership.members().isEmpty)
+      let remaining = try await ownership.members()
+      try #require(remaining.isEmpty)
     }
   }
 
@@ -874,6 +886,11 @@ private final class CUAHarness: @unchecked Sendable {
     try await base.requireNoScratch()
     base.session.end()
     try await requireJoined()
+    for worktree in worktrees {
+      let registration = try base.database.project(id: worktree.id)
+      #expect(registration == nil, "Host cleanup retained \(worktree.id)")
+      #expect(!FileManager.default.fileExists(atPath: worktree.path.path))
+    }
     try FileManager.default.removeItem(at: base.root)
     try #require(!FileManager.default.fileExists(atPath: base.root.path))
   }
