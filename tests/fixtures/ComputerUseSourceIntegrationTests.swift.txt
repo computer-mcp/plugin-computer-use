@@ -140,13 +140,27 @@ struct ComputerUseSourceIntegrationTests {
     cases += ["exact-overrides", "default-replacement", "additive-floor", "conservative", "stale"]
 
     try await withCUAHarness(source, exposed: ["fixture_observe"]) { h in
-      let names = try h.gateway.listTools(context: .empty).map(\.name)
-      try #require(names.contains("cua-fixture.fixture_observe"))
-      try #require(!names.contains("cua-fixture.fixture_unknown"))
-      try #require(
-        try cuaFailure(await h.call("fixture_unknown"))["code"] == .string("mcp.tool_not_approved"))
+      let changes = h.gateway.toolChanges(context: .empty)
+      let names = try await h.discover()
+      try #require(names == ["fixture_observe"])
+
+      // The admitted server catalog is available before the public reexport snapshot is published.
+      let reexports = try await h.reexports(after: changes)
+      try #require(reexports == ["cua-fixture.fixture_observe"])
+      for hidden in ["fixture_act", "fixture_unknown"] {
+        try #require(
+          try cuaFailure(await h.call(hidden))["code"] == .string("mcp.tool_not_approved"))
+        let direct = try await h.gateway.callToolForMCPAsync(
+          name: "cua-fixture.\(hidden)", arguments: .object([:]), context: .empty)
+        try #require(try cuaFailure(direct)["code"] == .string("gateway.tool_unknown"))
+      }
       try #require(h.callCount == 0)
       try cuaSuccess(try await h.call("fixture_observe"))
+      try #require(h.callCount == 1)
+      let direct = try await h.gateway.callToolForMCPAsync(
+        name: "cua-fixture.fixture_observe", arguments: .object([:]), context: .empty)
+      try cuaSuccess(direct)
+      try #require(h.callCount == 2)
     }
     cases += ["exposure"]
 
@@ -631,7 +645,8 @@ private final class CUAHarness: @unchecked Sendable {
     return result
   }
 
-  func discover(projectID: String? = nil) async throws {
+  @discardableResult
+  func discover(projectID: String? = nil) async throws -> [String] {
     let before = callCount
     let result = try await catalog(projectID: projectID)
     try cuaSuccess(result)
@@ -639,6 +654,31 @@ private final class CUAHarness: @unchecked Sendable {
       result.objectValue?["structuredContent"]?.objectValue?["result"]?.arrayValue)
     try #require(!tools.isEmpty)
     try #require(callCount == before, "Catalog discovery must not invoke a tool")
+    return try tools.map { try #require($0.objectValue?["name"]?.stringValue) }
+  }
+
+  func reexports(after changes: AsyncStream<Void>) async throws -> [String] {
+    @Sendable func names() async throws -> [String] {
+      try await gateway.listToolsAsync(context: .empty).map(\.name)
+        .filter { $0.hasPrefix("cua-fixture.") }
+    }
+    return try await withThrowingTaskGroup(of: [String].self) { group in
+      group.addTask {
+        let initial = try await names()
+        if !initial.isEmpty { return initial }
+        for await _ in changes {
+          let updated = try await names()
+          if !updated.isEmpty { return updated }
+        }
+        return try await names()
+      }
+      group.addTask {
+        try await Task.sleep(for: .seconds(5))
+        return try await names()
+      }
+      defer { group.cancelAll() }
+      return try #require(await group.next())
+    }
   }
 
   func call(_ name: String, retry: [UUID] = [], projectID: String? = nil) async throws -> JSONValue
