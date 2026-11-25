@@ -762,7 +762,7 @@ private final class CUAHarness: @unchecked Sendable {
     try #require(targetAfter.isEmpty)
     try #require(siblingAfter == siblingBefore)
     try #require(try base.database.project(id: target.id) == nil)
-    let survivingProject = try #require(base.database.project(id: sibling.id))
+    let survivingProject = try #require(try base.database.project(id: sibling.id))
     let registeredRoot = URL(fileURLWithPath: survivingProject.rootPath, isDirectory: true)
     let actualRoot = cuaCanonicalPath(registeredRoot)
     let expectedRoot = cuaCanonicalPath(sibling.path)
