@@ -314,7 +314,8 @@ private struct CUAWorktree {
       context: .init(session: session))
     let receipt = try cuaResult(result)
     print("CUA worktree remove receipt: \(result)")
-    try #require(receipt["project_id"] == .string(id) && receipt["branch"] == .string(branch))
+    try #require(receipt["project_id"] == .string(id))
+    try #require(receipt["branch"] == .string("refs/heads/" + branch))
     try #require(receipt["terminationWarnings"] == .array([]))
     try #require(!FileManager.default.fileExists(atPath: path.path))
     return receipt
