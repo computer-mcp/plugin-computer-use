@@ -101,11 +101,11 @@ test evidence and external executables, and the same inputs produce the same byt
 [documentation index](docs/README.md) covers the package architecture and the
 [release process](docs/Reference/Release.md).
 
-CI runs the package tests and keeps the archive and its SHA-256 receipt on pull requests, `master`
-pushes and manual runs, and repeats the tests and build on Python 3.11. It runs without macOS and
-never starts the vendor client, so its artifacts are neither a public plugin release nor proof of
-GUI compatibility. Local ownership or a bundled source label is not a verified GitHub publisher or
-artifact signature.
+CI runs the Linux package tests and retains the archive and its SHA-256 receipt on pull requests,
+`master` pushes and manual runs. It repeats the tests and build on Python 3.11 and runs the
+deterministic source consumer on macOS against the pinned Host commit. The signed-App procedure
+covers vendor discovery and GUI compatibility separately. Local ownership or a bundled source
+label is not a verified GitHub publisher or artifact signature.
 
 ## Contributing
 

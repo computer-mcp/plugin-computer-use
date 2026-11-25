@@ -3,7 +3,8 @@
 Release status: [CI](https://github.com/computer-mcp/plugin-computer-use/blob/master/.github/workflows/ci.yml)
 builds candidate archives on pull requests, `master` pushes and manual runs.
 [`release.yml`](https://github.com/computer-mcp/plugin-computer-use/blob/master/.github/workflows/release.yml)
-implements dry runs and publication; native and host acceptance are manual.
+implements dry runs and publication. CI runs the deterministic consumer against
+pinned Host source on macOS. Signed-App native acceptance is manual.
 
 The organization [VERSIONING](https://github.com/computer-mcp/.github/blob/master/VERSIONING.md)
 owns version rules, including tags, version choice and the changelog. This

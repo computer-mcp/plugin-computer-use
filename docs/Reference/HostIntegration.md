@@ -87,15 +87,19 @@ and runtime checks remain pending until executed by the owning coordinator.
 
 ## CI and coordinated candidates
 
-The existing package CI runs on Linux and does not establish Darwin provider
-activation. The final source-consumer job must use a macOS runner, check out the
-reviewed host by its full commit SHA, verify HEAD and run the driver above against
-the exact plugin candidate. That final host pin and CI wiring are pending the
-reviewed host candidate. A workflow-action pin or minimum-host version is not a
-host consumer pin. An unpublished/unreachable host commit leaves remote CI
-pending. After a host squash merge, update to the actual merged SHA and rerun
-before dependent plugin integration. Release pins belong to the coordinated
-release point.
+The macOS source consumer reads the full Host commit from
+`.github/computer-mcp-host.sha`. It checks out
+that commit from the public Computer MCP repository alongside a separate plugin
+checkout. The driver verifies both clean checkouts, uses the plugin checkout's
+actual HEAD, and runs the deterministic fixture. The CI validation gate requires
+the source consumer alongside both Linux package jobs.
+
+The job uploads the driver receipt, case results and logs when available. The
+pinned Host commit must be reachable from the public repository for CI to check
+it out. For an unpublished commit, run the driver against the local Host source.
+After the coordinated Host freeze or a squash merge changes its commit, update
+the pin to the accepted Host SHA and rerun the consumer before integrating the
+plugin. Release pins belong to the coordinated release point.
 
 ## Signed-App native acceptance
 

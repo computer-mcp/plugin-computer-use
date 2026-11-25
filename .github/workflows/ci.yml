@@ -47,9 +47,65 @@ jobs:
         run: |
           python3 -m unittest discover -s tests -p 'test_*.py'
           python3 scripts/build_package.py dist
+  host-source:
+    runs-on: macos-26
+    timeout-minutes: 30
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.4.app/Contents/Developer
+    steps:
+      - name: Check out plugin source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          path: plugin
+          persist-credentials: false
+      - name: Read pinned Host revision
+        id: host
+        shell: bash
+        run: |
+          host_sha=$(cat plugin/.github/computer-mcp-host.sha)
+          if [[ ! "$host_sha" =~ ^[0-9a-f]{40}$ || "$host_sha" == 0000000000000000000000000000000000000000 ]]; then
+            echo "::error file=.github/computer-mcp-host.sha::Expected a full Host commit SHA"
+            exit 1
+          fi
+          echo "sha=$host_sha" >> "$GITHUB_OUTPUT"
+      - name: Check out pinned Host source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          repository: computer-mcp/computer-mcp
+          ref: ${{ steps.host.outputs.sha }}
+          path: host
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: '3.13'
+      - name: Verify exact sources and run the consumer
+        env:
+          HOST_SHA: ${{ steps.host.outputs.sha }}
+        run: |
+          host_source="$GITHUB_WORKSPACE/host"
+          plugin_source="$GITHUB_WORKSPACE/plugin"
+          test "$(git -C "$host_source" rev-parse HEAD)" = "$HOST_SHA"
+          plugin_sha=$(git -C "$plugin_source" rev-parse HEAD)
+          python3 -B "$plugin_source/scripts/validate_host_source.py" \
+            --host-source "$host_source" --host-sha "$HOST_SHA" \
+            --plugin-source "$plugin_source" --plugin-sha "$plugin_sha" \
+            --output "$RUNNER_TEMP/computer-use-host-source" --timeout 1200
+      - name: Retain Host source evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: computer-use-host-source-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/computer-use-host-source/receipt.json
+            ${{ runner.temp }}/computer-use-host-source/cases.json
+            ${{ runner.temp }}/computer-use-host-source/*-export.log
+            ${{ runner.temp }}/computer-use-host-source/swift-test.log
+          if-no-files-found: ignore
+          retention-days: 14
+
   validate:
     if: always()
-    needs: [package, minimum-python]
+    needs: [package, minimum-python, host-source]
     uses: computer-mcp/github-workflows/.github/workflows/result.yml@fd25fcface41732fda099017c6945912366fc7c1
     with:
       needs-json: ${{ toJSON(needs) }}
