@@ -34,6 +34,7 @@ class PackageTests(unittest.TestCase):
                 "docs/Architecture/Package.md",
                 "docs/Architecture/Documentation.md",
                 "docs/Reference/Release.md",
+                "docs/Reference/HostIntegration.md",
                 "skills/observe-act-verify/SKILL.md",
                 "skills/observe-act-verify/agents/openai.yaml",
             })

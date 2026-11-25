@@ -17,7 +17,14 @@ Until answered, perform only authorized reads; do not choose a write target.
 Read the current registration and tool catalog. Use the actual names and input
 schemas: prefixes, available tools and supported callers can differ by host.
 Tool annotations are hints, not grants. Respect host policy, caller scope and
-local approval boundaries. Loading this skill grants no tool access.
+local approval boundaries. Loading this skill grants no tool access. Reading it
+needs Skills and Plugin use.
+A native call also checks the provider's reviewed authority and the caller's
+permissions. Screen/Desktop grants and OS privacy authorization are separate.
+For undeclared native tools, the host conservatively requires the provider's
+sensitive held permissions, even when the tool advertises a read-only operation.
+If the host returns permission requests, the owner must answer them and the caller
+must explicitly retry the matching call; approval does not dispatch it.
 
 ## Observe, then act
 

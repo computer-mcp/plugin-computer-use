@@ -8,6 +8,11 @@ external dependencies and credentials.
 
 CI runs `python3 -m unittest discover -s tests -p 'test_*.py'` and `python3 scripts/build_package.py OUTPUT_DIRECTORY` on Python 3.13 and 3.11; run both before opening a pull request. Build an archive with `scripts/build-package.sh OUTPUT_DIRECTORY` and inspect its file list. GUI checks use disposable, explicitly authorized targets.
 
+Deterministic source admission checks use the explicit host/plugin revisions and
+external output directory described in [Host integration](docs/Reference/HostIntegration.md).
+Keep their evidence outside this repository. Native GUI acceptance is separate;
+a fixture success does not establish vendor permissions or mode compatibility.
+
 ## Documentation
 
 The [documentation index](docs/README.md) links current architecture

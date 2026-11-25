@@ -33,3 +33,19 @@ The repository validation workflow verifies package boundaries and reproducible
 bytes on a non-GUI runner, retaining a ZIP and digest receipt with read-only
 repository permissions. GUI acceptance and authorized publication have separate
 evidence and approval requirements; neither follows from a successful package job.
+
+## Authority and verification
+
+The manifest requests Screen and Desktop control, with purposes shown at review.
+It declares no native per-tool catalog or default requirement. The host applies
+its conservative undeclared-tool rule and its additive minimum effects; runtime
+annotations cannot reduce those requirements. Caller Plugin use and the provider's
+own approval remain independent. Reading the passive skill requires Skills and
+Plugin use, and grants no execution authority.
+
+Omitted sandbox settings request the host's minimum sandbox with no network or
+read exceptions. Native mode, configuration, login and privacy behavior remain
+unverified until the signed-App procedure in [host integration](../Reference/HostIntegration.md).
+Only the owner can select the shipped mode after those facts are available.
+Source-only deterministic peers and synthetic requirement variants remain test
+inputs outside the archive; they implement no production proxy or runtime.

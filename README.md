@@ -52,6 +52,16 @@ and enable it.
    whitelist or all-tools exposure explicitly, and keep the appropriate caller and profile
    permissions. Enabling the package does not override those permissions.
 
+The package requests Screen and Desktop control for owner review. Installation and
+enablement do not supply caller permissions: each call also needs Plugin use and the
+host-resolved requirements from both caller and provider. Reading the guidance needs
+Skills and Plugin use; it does not start the native client.
+
+The manifest leaves native tool requirements undeclared. Until verified native names
+and effects support a reviewed map, the host conservatively requires all sensitive
+permissions held by the provider, except Machine information and Skills, even for
+tools advertised as read-only.
+
 The host finds the client on its search path, then by the installed application's bundle
 identifier, `com.openai.sky.CUAService`. When neither finds it, bind the actual executable in the
 plugin's dependency settings; an explicit binding takes precedence.
@@ -69,6 +79,13 @@ through the vendor's and the system's supported flows.
 Native accessibility (AX) remains available for diagnostics and fallback where appropriate. An
 uncertain write is observed before any further action; it is never replayed automatically
 through AX.
+
+The current declaration uses the minimum sandbox defaults: no network, no existing
+configuration reads and no Full access request. Native discovery, Screen/Desktop
+behavior, vendor state and execution-mode needs still require verification through
+the user's signed App. The owner chooses the shipped mode from those facts. See
+[source validation](docs/Reference/HostIntegration.md) for deterministic checks and
+the separate native acceptance procedure.
 
 ## Requirements
 
