@@ -43,6 +43,20 @@ joined process ownership. Peer logs count actual dispatches independently of
 returned errors. Startup probes verify container/scratch writes and refusal of a
 disposable outside write. No vendor executable, account, GUI or TCC flow is used.
 
+The worktree cases create disposable projects with `git.worktree_add`. The
+unchanged package reaches the provider's Project read requirement and the Host
+refuses to grant it because the package does not declare Project read. A
+temporary test copy adds that declaration and gets a grant for the source
+project. With inherited source authority, the registered contribution runs in
+the derived worktree and the caller and provider still need their Screen and
+Desktop control permissions. Caller Plugin use gates discovery.
+
+The fixture matches each peer PID to Host sandbox ownership and checks the
+`git.worktree_remove` receipt and joined target process before shutdown.
+Removal preserves the sibling checkout and its running peer, the source
+checkout and a foreign provider's state. The shipped package's scoped refusal
+and the temporary copy's successful worktree run are separate cases.
+
 Run Python checks without building the package:
 
 ```sh
@@ -128,7 +142,9 @@ explicitly authorized target:
    declared Full access request from those facts. Full access does not grant
    host Screen/Desktop permission, Full Disk Access or inherited App privacy
    responsibility. Discovery still has to meet its sandbox boundary.
-7. Verify revocation and the matched-group host-worktree invocation/removal
-   checks at the final candidate, including joined sandboxed writers.
+7. Verify revocation at the final candidate. Review the shipped package's
+   Project permission boundary before any project-scoped native run. For an
+   approved scoped declaration, verify Host worktree invocation and removal
+   with the matched group, including joined sandboxed executions.
 
 Deterministic fixtures do not replace this evidence or the owner's mode choice.

@@ -23,7 +23,8 @@ CASES = {
     "dual-principal", "requests", "explicit-retry", "deny", "plugin-use",
     "exact-overrides", "default-replacement", "additive-floor", "conservative",
     "stale", "exposure", "disable", "provider-revoke", "caller-revoke",
-    "joined-processes",
+    "joined-processes", "worktree-source-floor", "worktree-inherited-gates",
+    "worktree-removal-joins",
 }
 INPUTS = (
     "computer-mcp-plugin.toml", "tests/fixtures/" + FIXTURE + ".txt",

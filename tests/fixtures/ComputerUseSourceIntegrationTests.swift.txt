@@ -1,5 +1,6 @@
 import ComputerMCPMacOS
 import ComputerMCPPermissions
+import ComputerMCPSandbox
 import ComputerMCPTestSupport
 import CryptoKit
 import Darwin
@@ -197,6 +198,8 @@ struct ComputerUseSourceIntegrationTests {
       }
     }
     cases += ["disable", "provider-revoke", "caller-revoke", "joined-processes"]
+    try await requireWorktreeContract(source)
+    cases += ["worktree-source-floor", "worktree-inherited-gates", "worktree-removal-joins"]
     try #require(try cuaDigest(source.appendingPathComponent(PluginManifest.filename)) == before)
     let output = URL(fileURLWithPath: try #require(environment["COMPUTER_MCP_CUA_CASES"]))
     try JSONSerialization.data(withJSONObject: [
@@ -204,6 +207,44 @@ struct ComputerUseSourceIntegrationTests {
       "run_id": try #require(environment["COMPUTER_MCP_CUA_RUN_ID"]), "cases": cases,
     ])
     .write(to: output, options: .atomic)
+  }
+
+  private func requireWorktreeContract(_ source: URL) async throws {
+    try await withCUAHarness(source, worktree: .shipped) { h in
+      let (request, requirement) = try h.requireRequest(
+        await h.call("fixture_unknown"), permission: .project("fixture"), provider: true)
+      try #require(requirement.value == .read)
+      let service = h.gateway.permissionRuntime.service
+      let revision = try service.view(owner: h.owner).revision
+      #expect(throws: GatewayPermissionError.invalidBinding) {
+        try service.answerRequest(
+          request.id, answer: .onlyThisTime, owner: h.owner, expectedRevision: revision)
+      }
+      try #require(h.callCount == 0)
+    }
+    for permission in [Permission.screen, .desktopControl] {
+      try await withCUAHarness(source, callerMissing: permission, worktree: .fixture) { h in
+        _ = try h.requireRequest(
+          await h.call("fixture_unknown"), permission: permission, provider: false)
+        try #require(h.callCount == 0)
+      }
+      try await withCUAHarness(
+        source, variant: .overrides, providerMissing: permission, worktree: .fixture
+      ) { h in
+        _ = try h.requireRequest(
+          await h.call("fixture_act"), permission: permission, provider: true)
+        try #require(h.callCount == 0)
+      }
+    }
+    try await withCUAHarness(source, pluginUse: false, worktree: .fixture) { h in
+      let before = h.base.observations.members.count
+      _ = try h.requireRequest(
+        await h.catalog(), permission: .plugin("computer-use"), provider: false)
+      try #require(h.base.observations.members.count == before && h.callCount == 0)
+    }
+    try await withCUAHarness(source, worktree: .removal) { h in
+      try await h.requireWorktreeRemoval()
+    }
   }
 
   private func requireAdditiveRequirements(_ source: URL) throws {
@@ -225,6 +266,44 @@ struct ComputerUseSourceIntegrationTests {
     try #require(effective.access == .projectWrite)
     try #require(
       Set(effective.permissions) == [try .init(.screen, .access), try .init(.unifiedLogs, .access)])
+  }
+}
+
+private enum CUAWorktreeMode {
+  case shipped, fixture, removal
+}
+
+private struct CUAWorktree {
+  let id: String
+  let path: URL
+  let branch: String
+
+  static func create(
+    _ name: String, using lifecycle: GatewayStandaloneGenerations, session: GatewayControlSession
+  ) async throws -> Self {
+    let result = try await lifecycle.callToolForMCPAsync(
+      name: "git.worktree_add", arguments: .object(["name": .string(name)]),
+      context: .init(session: session))
+    let receipt = try cuaResult(result)
+    print("CUA worktree create receipt: \(result)")
+    return try Self(
+      id: #require(receipt["project_id"]?.stringValue),
+      path: URL(fileURLWithPath: #require(receipt["path"]?.stringValue)),
+      branch: #require(receipt["branch"]?.stringValue))
+  }
+
+  func remove(
+    using lifecycle: GatewayStandaloneGenerations, session: GatewayControlSession
+  ) async throws -> [String: JSONValue] {
+    let result = try await lifecycle.callToolForMCPAsync(
+      name: "git.worktree_remove", arguments: .object(["project_id": .string(id)]),
+      context: .init(session: session))
+    let receipt = try cuaResult(result)
+    print("CUA worktree remove receipt: \(result)")
+    try #require(receipt["project_id"] == .string(id) && receipt["branch"] == .string(branch))
+    try #require(receipt["terminationWarnings"] == .array([]))
+    try #require(!FileManager.default.fileExists(atPath: path.path))
+    return receipt
   }
 }
 
@@ -257,15 +336,21 @@ private func cuaFailure(_ result: JSONValue) throws -> [String: JSONValue] {
   return try #require(result.objectValue?["structuredContent"]?.objectValue?["error"]?.objectValue)
 }
 
+private func cuaResult(_ result: JSONValue) throws -> [String: JSONValue] {
+  try cuaSuccess(result)
+  return try #require(result.objectValue?["structuredContent"]?.objectValue?["result"]?.objectValue)
+}
+
 private func withCUAHarness(
   _ source: URL, variant: CUAVariant? = nil, callerMissing: Permission? = nil,
   providerMissing: Permission? = nil, deny: Bool = false, pluginUse: Bool = true,
   exposed: [String] = ["fixture_observe", "fixture_act", "fixture_unknown"],
+  worktree: CUAWorktreeMode? = nil,
   operation: (CUAHarness) async throws -> Void
 ) async throws {
   let harness = try await CUAHarness.make(
     source, variant: variant, callerMissing: callerMissing, providerMissing: providerMissing,
-    deny: deny, pluginUse: pluginUse, exposed: exposed)
+    deny: deny, pluginUse: pluginUse, exposed: exposed, worktree: worktree)
   do {
     if pluginUse { try await harness.discover() }
     try await operation(harness)
@@ -286,11 +371,14 @@ private final class CUAHarness: @unchecked Sendable {
   let home: URL
   let outside: URL
   let variant: CUAVariant?
+  let lifecycle: GatewayStandaloneGenerations?
+  let worktrees: [CUAWorktree]
 
   init(
     base: FixedHostFixture, gateway: GatewayRuntime, owner: GatewayPermissionOwner,
     package: PluginPackage, store: PluginStore, consumerID: GatewayProfileID,
-    home: URL, outside: URL, variant: CUAVariant?
+    home: URL, outside: URL, variant: CUAVariant?, lifecycle: GatewayStandaloneGenerations?,
+    worktrees: [CUAWorktree]
   ) {
     self.base = base
     self.gateway = gateway
@@ -301,30 +389,59 @@ private final class CUAHarness: @unchecked Sendable {
     self.home = home
     self.outside = outside
     self.variant = variant
+    self.lifecycle = lifecycle
+    self.worktrees = worktrees
   }
 
   static func make(
     _ source: URL, variant: CUAVariant?, callerMissing: Permission?, providerMissing: Permission?,
-    deny: Bool, pluginUse: Bool, exposed: [String]
+    deny: Bool, pluginUse: Bool, exposed: [String], worktree: CUAWorktreeMode?
   ) async throws -> CUAHarness {
-    let base = try FixedHostFixture(fullAccess: false)
+    let base = try FixedHostFixture(fullAccess: false, lifecycle: worktree != nil)
+    let lifecycle = worktree.map { _ in GatewayStandaloneGenerations(base.runtime) }
+    var worktrees: [CUAWorktree] = []
     print("CUA fixture root: \(base.root.path)")
     print(
       "CUA scenario variant=\(String(describing: variant)) callerMissing=\(String(describing: callerMissing)) "
-        + "providerMissing=\(String(describing: providerMissing)) deny=\(deny) pluginUse=\(pluginUse)"
+        + "providerMissing=\(String(describing: providerMissing)) deny=\(deny) pluginUse=\(pluginUse) "
+        + "worktree=\(String(describing: worktree))"
     )
     var pending: GatewayRuntime?
     do {
+      if let lifecycle {
+        try await base.initializeRepository()
+        for name in worktree == .removal ? ["cua-target", "cua-sibling"] : ["cua-target"] {
+          worktrees.append(
+            try await CUAWorktree.create(name, using: lifecycle, session: base.session))
+        }
+      }
+      let fixtureProjectGrant = worktree != nil && worktree != .shipped
       let packageRoot: URL
-      if let variant {
+      if variant != nil || fixtureProjectGrant {
         packageRoot = base.root.appendingPathComponent("synthetic-package")
         try FileManager.default.copyItem(at: source, to: packageRoot)
         let file = packageRoot.appendingPathComponent(PluginManifest.filename)
-        let text = try String(contentsOf: file, encoding: .utf8)
-        try #require(text.components(separatedBy: "capabilities = ['tools']").count == 2)
-        try text.replacingOccurrences(
-          of: "capabilities = ['tools']", with: "capabilities = ['tools']\n" + variant.fields
-        ).write(to: file, atomically: true, encoding: .utf8)
+        var text = try String(contentsOf: file, encoding: .utf8)
+        if let variant {
+          let marker = "capabilities = ['tools']"
+          try #require(text.components(separatedBy: marker).count == 2)
+          text = text.replacingOccurrences(of: marker, with: marker + "\n" + variant.fields)
+        }
+        if fixtureProjectGrant {
+          let marker = "[[dependencies]]"
+          try #require(text.components(separatedBy: marker).count == 2)
+          text = text.replacingOccurrences(
+            of: marker,
+            with: """
+              [[permissions]]
+              id = 'project'
+              access = 'read'
+              purpose = 'Read the disposable source project in the Host worktree fixture.'
+
+              \(marker)
+              """)
+        }
+        try text.write(to: file, atomically: true, encoding: .utf8)
       } else {
         packageRoot = source
       }
@@ -377,7 +494,7 @@ private final class CUAHarness: @unchecked Sendable {
         toolRisks: Dictionary(uniqueKeysWithValues: exposed.map { ($0, CapabilityRisk.readOnly) }))
       _ = try await store.setSettings(
         settings, for: "computer-use", expectedRevision: store.snapshot().revision)
-      func permissions(missing: Permission?, use: Bool) -> Permissions {
+      func permissions(missing: Permission?, use: Bool, projectRead: Bool) -> Permissions {
         var values: [Permission: PermissionState] = [
           .screen: .granted(.access), .desktopControl: .granted(.access),
         ]
@@ -389,11 +506,13 @@ private final class CUAHarness: @unchecked Sendable {
           }
         }
         if use { values[.plugin("computer-use")] = .granted(.use) }
+        if projectRead { values[.project("fixture")] = .granted(.read) }
         return fixturePermissions(values)
       }
       try fixtureApprovePlugin(
         package, database: base.database, runtime: runtime,
-        permissions: permissions(missing: providerMissing, use: false))
+        permissions: permissions(
+          missing: providerMissing, use: false, projectRead: fixtureProjectGrant))
       let enabledState = try await store.snapshot()
       let enabled = try #require(enabledState.settings["computer-use"])
       try #require(enabled.enabled && enabled.mcp["native"]?.allowedTools == exposed)
@@ -403,11 +522,13 @@ private final class CUAHarness: @unchecked Sendable {
         hostVersion: PluginVersion(ComputerMCPCLI.version), architecture: PluginHost.architecture)
       try #require(plugin.diagnostics.isEmpty && plugin.mcpServers.count == 1)
       let consumerID = try #require(GatewayProfileID(rawValue: "cua-consumer"))
-      let lifecycle = try #require(
+      let lifecycleProfile = try #require(
         base.database.profiles().first { $0.id == base.configuration.runtime.profileID })
-      try #require(consumerID != .localAdmin && consumerID != lifecycle.id)
+      try #require(consumerID != .localAdmin && consumerID != lifecycleProfile.id)
       let consumer = ProfileGrant(
-        id: consumerID, permissions: permissions(missing: callerMissing, use: pluginUse),
+        id: consumerID,
+        permissions: permissions(
+          missing: callerMissing, use: pluginUse, projectRead: worktree != nil),
         allowedCallers: [.localMCP])
       try base.database.saveProfile(consumer)
       let gateway = try GatewayRuntime(
@@ -415,14 +536,17 @@ private final class CUAHarness: @unchecked Sendable {
           runtime: .init(caller: .localMCP, profileID: consumerID),
           profiles: base.configuration.profiles + [.init(grant: consumer)]),
         context: .init(
-          caller: .localMCP, profileID: consumerID, trustedPrincipalID: "cua-consumer"),
-        database: base.database, registeredProjects: [],
+          caller: .localMCP, profileID: consumerID, projectID: worktrees.first?.id,
+          trustedPrincipalID: "cua-consumer"),
+        database: base.database,
+        registeredProjects: worktree == nil ? [] : base.database.projects(),
         platform: base.platform, plugins: [plugin],
         bundledPlugins: .init(packages: [], issues: []))
       pending = gateway
       _ = try gateway.makeControlSession()
-      try #require(gateway.unambiguousProjectID == nil)
-      try #require(base.database.profiles().first { $0.id == lifecycle.id } == lifecycle)
+      if worktree == nil { try #require(gateway.unambiguousProjectID == nil) }
+      try #require(
+        base.database.profiles().first { $0.id == lifecycleProfile.id } == lifecycleProfile)
       let owner = try GatewayPermissionOwner(
         context: .init(caller: .localApp, profileID: .localAdmin, trustedPrincipalID: "cua-owner"),
         validate: {})
@@ -451,11 +575,20 @@ private final class CUAHarness: @unchecked Sendable {
       return CUAHarness(
         base: base, gateway: gateway, owner: owner, package: package, store: store,
         consumerID: consumerID, home: URL(fileURLWithPath: sandbox.home.value),
-        outside: outside, variant: variant)
+        outside: outside, variant: variant, lifecycle: lifecycle, worktrees: worktrees)
     } catch {
       await pending?.shutdown()
+      if let lifecycle {
+        for worktree in worktrees.reversed() {
+          do { _ = try await worktree.remove(using: lifecycle, session: base.session) } catch {
+            Issue.record("CUA worktree cleanup failed: \(error)")
+          }
+        }
+        await lifecycle.shutdown()
+      } else {
+        await base.runtime.shutdown()
+      }
       base.session.end()
-      await base.runtime.shutdown()
       for ownership in base.observations.ownerships {
         try #require(try await ownership.members().isEmpty)
       }
@@ -469,11 +602,12 @@ private final class CUAHarness: @unchecked Sendable {
     return (try? String(contentsOf: path, encoding: .utf8).split(separator: "\n").count) ?? 0
   }
 
-  func catalog() async throws -> JSONValue {
+  func catalog(projectID: String? = nil) async throws -> JSONValue {
     let before = try base.database.configurationState()
+    var arguments: [String: JSONValue] = ["server": .string("cua-fixture")]
+    if let projectID { arguments["project_id"] = .string(projectID) }
     let result = try await gateway.callToolForMCPAsync(
-      name: "mcp.tools.list", arguments: .object(["server": .string("cua-fixture")]),
-      context: .empty)
+      name: "mcp.tools.list", arguments: .object(arguments), context: .empty)
     if result.objectValue?["isError"] == .bool(true) {
       let after = try base.database.configurationState()
       let current = try PluginPackage.load(at: package.root)
@@ -497,9 +631,9 @@ private final class CUAHarness: @unchecked Sendable {
     return result
   }
 
-  func discover() async throws {
+  func discover(projectID: String? = nil) async throws {
     let before = callCount
-    let result = try await catalog()
+    let result = try await catalog(projectID: projectID)
     try cuaSuccess(result)
     let tools = try #require(
       result.objectValue?["structuredContent"]?.objectValue?["result"]?.arrayValue)
@@ -507,15 +641,105 @@ private final class CUAHarness: @unchecked Sendable {
     try #require(callCount == before, "Catalog discovery must not invoke a tool")
   }
 
-  func call(_ name: String, retry: [UUID] = []) async throws -> JSONValue {
+  func call(_ name: String, retry: [UUID] = [], projectID: String? = nil) async throws -> JSONValue
+  {
     var arguments: [String: JSONValue] = [
       "server": .string("cua-fixture"), "tool": .string(name), "arguments": .object([:]),
     ]
     if !retry.isEmpty {
       arguments["_permission_request_ids"] = .array(retry.map { .string($0.uuidString) })
     }
+    if let projectID = projectID ?? worktrees.first?.id {
+      arguments["project_id"] = .string(projectID)
+    }
     return try await gateway.callToolForMCPAsync(
       name: "mcp.tools.call", arguments: .object(arguments), context: .empty)
+  }
+
+  func requireRequest(_ response: JSONValue, permission: Permission, provider: Bool) throws
+    -> (PermissionRequest, PermissionRequirement)
+  {
+    let failure = try cuaFailure(response)
+    try #require(failure["code"] == .string("permission.required"), "\(response)")
+    try #require(failure["call_dispatched"] == .bool(false))
+    let ids = try #require(failure["request_ids"]?.arrayValue)
+    let requests = try gateway.permissionRuntime.service.view(owner: owner).requests
+      .map(\.request).filter { ids.contains(.string($0.id.uuidString)) }
+    try #require(requests.count == 1)
+    let request = try #require(requests.first)
+    let providerPrincipal = Principal.plugin(.package("computer-use"))
+    try #require((request.invocation.principal == providerPrincipal) == provider)
+    if permission != .plugin("computer-use") {
+      try #require(request.invocation.projectID == worktrees.first?.id)
+    }
+    guard case .permission(let content) = request.content else {
+      throw GatewayPermissionError.invalidBinding
+    }
+    try #require(content.requirement.permission == permission)
+    return (request, content.requirement)
+  }
+
+  func requireWorktreeRemoval() async throws {
+    let lifecycle = try #require(lifecycle)
+    let target = try #require(worktrees.first)
+    let sibling = try #require(worktrees.last)
+    try #require(target.id != sibling.id && target.path != sibling.path)
+    let consumer = try #require(base.database.profiles().first { $0.id == consumerID })
+    let provider = try gateway.permissionRuntime.store.readWithDatabase { _, ledger in
+      ledger.permissions(for: .plugin(.package("computer-use")))
+    }
+    for permissions in [consumer.permissions, provider] {
+      try #require(permissions.state(for: .project("fixture")) == .granted(.read))
+      try #require(permissions.state(for: .project(target.id)) == .notGranted)
+      try #require(permissions.state(for: .project(sibling.id)) == .notGranted)
+    }
+    let oid = try await base.ownerGit(["rev-parse", "HEAD"]).trimmingCharacters(
+      in: .whitespacesAndNewlines)
+    let foreign = try base.database.prepareProviderContainer(.package("foreign-provider")).sandbox
+    let sentinel = URL(fileURLWithPath: foreign.state.value).appendingPathComponent("sentinel")
+    try Data("foreign".utf8).write(to: sentinel)
+
+    let targetProcess = try await invokeInWorktree(target)
+    try await discover(projectID: sibling.id)
+    let siblingProcess = try await invokeInWorktree(sibling)
+    try #require(callCount == 2)
+    let targetMembers = try await targetProcess.members()
+    let siblingMembers = try await siblingProcess.members()
+    try #require(!targetMembers.isEmpty && !siblingMembers.isEmpty)
+    try #require(Set(targetMembers).isDisjoint(with: siblingMembers))
+
+    let receipt = try await target.remove(using: lifecycle, session: base.session)
+    try #require(receipt["oid"] == .string(oid))
+    try #require(try await targetProcess.members().isEmpty)
+    try #require(try Set(await siblingProcess.members()) == Set(siblingMembers))
+    try #require(try base.database.project(id: target.id) == nil)
+    try #require(try base.database.project(id: sibling.id)?.rootPath == sibling.path.path)
+    for root in [base.project, sibling.path] {
+      try #require(
+        try String(contentsOf: root.appendingPathComponent("value.txt"), encoding: .utf8)
+          == "original")
+    }
+    try #require(try String(contentsOf: sentinel, encoding: .utf8) == "foreign")
+    try #require(callCount == 2, "Removal must not invoke a downstream tool")
+  }
+
+  private func invokeInWorktree(_ worktree: CUAWorktree) async throws -> any ExecutionOwnership {
+    let before = base.observations.ownerships.count
+    let result = try cuaResult(await call("fixture_unknown", projectID: worktree.id))
+    let peer = try #require(result["structuredContent"]?.objectValue)
+    let cwd = try #require(peer["cwd"]?.stringValue)
+    let pid = try #require(peer["pid"]?.intValue)
+    try #require(peer["tool"] == .string("fixture_unknown"))
+    try #require(URL(fileURLWithPath: cwd).resolvingSymlinksInPath().path == worktree.path.path)
+    for ownership in base.observations.ownerships.dropFirst(before) {
+      let state = try ownership.recoveryState()
+      guard state.root.processID == pid else { continue }
+      try #require(state.sandboxed)
+      print("CUA worktree peer project=\(worktree.id) pid=\(pid) cwd=\(cwd)")
+      return ownership
+    }
+    Issue.record("No Host-owned execution matched the scoped peer PID \(pid)")
+    throw GatewayPermissionError.invalidBinding
   }
 
   func requireDiscoveryBoundary() throws {
@@ -590,10 +814,24 @@ private final class CUAHarness: @unchecked Sendable {
   }
 
   func close() async throws {
-    await gateway.shutdown()
+    if let lifecycle {
+      for worktree in worktrees.reversed() {
+        do {
+          if try base.database.project(id: worktree.id) != nil {
+            _ = try await worktree.remove(using: lifecycle, session: base.session)
+          }
+        } catch {
+          Issue.record("CUA worktree cleanup failed: \(error)")
+        }
+      }
+      await gateway.shutdown()
+      await lifecycle.shutdown()
+    } else {
+      await gateway.shutdown()
+      await base.runtime.shutdown()
+    }
     try await base.requireNoScratch()
     base.session.end()
-    await base.runtime.shutdown()
     try await requireJoined()
     try FileManager.default.removeItem(at: base.root)
     try #require(!FileManager.default.fileExists(atPath: base.root.path))
