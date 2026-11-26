@@ -69,10 +69,29 @@ def contains(parent, child):
     return child == parent or parent in child.parents
 
 
+def location_contains(parent, child):
+    if contains(parent, child):
+        return True
+    try:
+        parent_stat = parent.stat()
+    except (FileNotFoundError, NotADirectoryError):
+        return False
+
+    # A fresh output may have several missing components below an existing alias.
+    for candidate in (child, *child.parents):
+        try:
+            if os.path.samestat(parent_stat, candidate.stat()):
+                return True
+        except (FileNotFoundError, NotADirectoryError):
+            continue
+    return False
+
+
 def validate_locations(host, plugin, output):
-    if contains(host, plugin) or contains(plugin, host):
+    if location_contains(host, plugin) or location_contains(plugin, host):
         raise ValueError("Host and plugin must be separate, non-nested source checkouts")
-    if any(contains(root, output) or contains(output, root) for root in (host, plugin)):
+    if any(location_contains(root, output) or location_contains(output, root)
+           for root in (host, plugin)):
         raise ValueError("Output must be outside both source checkouts and their ancestors")
     if output.exists() or output.is_symlink():
         raise ValueError("Output must be a new external directory")

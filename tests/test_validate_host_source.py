@@ -87,6 +87,26 @@ class DriverTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             DRIVER.validate_locations(self.host, self.plugin, self.output)
 
+    def test_output_cannot_overlap_case_aliased_checkouts(self):
+        if not self.host.with_name("HOST").is_dir():
+            self.skipTest("Temporary filesystem is case-sensitive")
+
+        for output in (self.host.with_name("HOST") / "ignored" / "result",
+                       self.plugin.with_name("PLUGIN") / "ignored" / "result",
+                       self.root.with_name(self.root.name.upper())):
+            with self.subTest(output=output), self.assertRaisesRegex(ValueError, "outside both"):
+                DRIVER.validate_locations(self.host, self.plugin, DRIVER.absolute(output))
+
+    def test_source_checkouts_cannot_be_case_aliases_or_nested(self):
+        host_alias = self.host.with_name("HOST")
+        if not host_alias.is_dir():
+            self.skipTest("Temporary filesystem is case-sensitive")
+
+        (self.host / "nested").mkdir()
+        for plugin in (host_alias, host_alias / "nested"):
+            with self.subTest(plugin=plugin), self.assertRaisesRegex(ValueError, "separate, non-nested"):
+                DRIVER.validate_locations(self.host, DRIVER.absolute(plugin), self.output)
+
     def test_success_exports_without_editing_inputs_and_removes_owned_trees(self):
         original = {name: (self.plugin / name).read_bytes() for name in DRIVER.INPUTS}
         self.run_mocked()
