@@ -4,6 +4,16 @@ version = '0.1.0'
 plugin_api = 1
 description = 'Native Computer Use MCP registration and observe–act–verify guidance.'
 
+[[permissions]]
+id = 'screen'
+access = 'allow'
+purpose = 'Observe the desktop for the task authorized by the user.'
+
+[[permissions]]
+id = 'desktop-control'
+access = 'allow'
+purpose = 'Perform desktop actions authorized by the user.'
+
 [[dependencies]]
 id = 'computer-use-client'
 commands = ['SkyComputerUseClient']

@@ -1,6 +1,7 @@
 # Documentation
 
 - [Architecture](Architecture/README.md): package composition and ownership.
+- [Host integration](Reference/HostIntegration.md): exact-source deterministic checks and signed-App acceptance.
 - [Release](Reference/Release.md): version sources, compatibility, acceptance and
   publication.
 - [Root manual](../README.md): requirements, installation, validation and recovery.
